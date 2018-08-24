@@ -1,13 +1,11 @@
 - name: Copy the templates
   become: yes
-  template: src={{item}} dest=/tmp/{{item}}
+  copy: src=files/{{item}} dest=/tmp/{{item}}
   with_items:
              - cassandra.cql
              - pageMgmt.csv
              - pageSection.csv
              - content_service.cql
-           #  - notes-{{env}}.csv
-            
   tags: 
        - always
   
@@ -35,5 +33,19 @@
 - name: Run the content_service.cql file
   become: yes
   command: "cqlsh -f /tmp/content_service.cql"
+  ignore_errors: yes
   tags: 
        - content_service
+
+- name: download 
+  become: yes
+  command: wget https://github.com/project-sunbird/sunbird-utils/releases/download/release-1.8/cassandra-migration-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+  args:
+    chdir: /tmp
+- name: Run the application
+  command: java -cp "cassandra-migration-0.0.1-SNAPSHOT-jar-with-dependencies.jar" com.contrastsecurity.cassandra.migration.utils.MigrationScriptEntryPoint
+  args:
+      chdir: /tmp
+  environment:
+    sunbird_cassandra_host: "{{ groups['cassandra'][0] }}"
+    sunbird_cassandra_port: 9042
